@@ -1,2 +1,7 @@
 python-telegram-bot>=21.0
-google-genai
+groq
+qrcode
+pillow
+python-dotenv
+flask
+gunicorn
