@@ -1,6 +1,6 @@
-
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from groq import Groq
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -116,12 +116,14 @@ SYSTEM_PROMPT = f"""Ты — дружелюбный AI-ассистент маг
  
 user_histories = {}
  
+ 
 async def send_qrcode(chat_id, context):
     try:
         with open("qrcode.png", "rb") as f:
             await context.bot.send_photo(chat_id, f, caption="🔗 QR-код на сайт Центр Красок #1")
     except FileNotFoundError:
         await context.bot.send_message(chat_id, f"🔗 Сайт: {COMPANY_DATA['requisites']['website']}")
+ 
  
 async def send_colors(chat_id, context):
     colors_text = """🎨 Популярные цвета красок:
@@ -137,6 +139,7 @@ async def send_colors(chat_id, context):
 💡 Совет: Приезжайте в шоурум — увидите все оттенки вживую!"""
     await context.bot.send_message(chat_id, colors_text)
  
+ 
 def get_main_keyboard():
     keyboard = [
         [InlineKeyboardButton("🎨 О компании", callback_data="about")],
@@ -147,6 +150,7 @@ def get_main_keyboard():
         [InlineKeyboardButton("🎨 Цвета красок", callback_data="colors")],
     ]
     return InlineKeyboardMarkup(keyboard)
+ 
  
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -169,6 +173,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     text = responses.get(data, "Выберите пункт из меню")
     await query.edit_message_text(text, reply_markup=get_main_keyboard())
+ 
  
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -207,20 +212,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
     await update.message.reply_text(reply, reply_markup=get_main_keyboard())
  
+ 
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_histories[user_id] = []
     welcome = "🎨 *Центр Красок #1*\n\nПривет! Я AI-помощник. Выбери интересующий раздел:"
     await update.message.reply_text(welcome, parse_mode="Markdown", reply_markup=get_main_keyboard())
  
+ 
 async def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", handle_start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CallbackQueryHandler(button_handler))
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application.add_handler(CommandHandler("start", handle_start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CallbackQueryHandler(button_handler))
+ 
     logger.info("✅ Бот запущен")
-    await app.run_polling(drop_pending_updates=True)
+ 
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling(drop_pending_updates=True)
+ 
+    # Держим бота живым
+    while True:
+        await asyncio.sleep(3600)
+ 
  
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
